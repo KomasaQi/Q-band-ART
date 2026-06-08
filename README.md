@@ -2,7 +2,7 @@
 
 <div align="center">
 <img src="./assets/img/Q-band.png" width=100% style="vertical-align: bottom;">
-<h1>Q-band Anti-Rollover Tracking </h1>
+<h1>Q-band Anti-Rollover Tracking Control</h1>
 
 
 <div align="center">
