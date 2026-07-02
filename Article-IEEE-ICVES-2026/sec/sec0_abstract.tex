@@ -1,0 +1,12 @@
+\providecommand{\Qband}{\ensuremath{Q_{\mathrm{band}}}}
+\providecommand{\ay}{\ensuremath{a_y}}
+\providecommand{\LTR}{\ensuremath{\mathrm{LTR}}}
+\providecommand{\T}{\ensuremath{\mathrm{T}}}
+
+\begin{abstract}
+Semi-trailer tankers are prone to rollover because lateral acceleration excites both suspension roll and liquid sloshing. Existing anti-rollover tracking methods usually introduce liquid states, roll states, or lateral load transfer ratio predictions into model predictive control, which increases dependence on liquid calibration, trailer-side sensing, and online model dimension. This paper proposes Q-band ART, an adaptive band-suppression framework that penalizes the predicted lateral-acceleration energy in rollover-critical frequency bands. A reduced cart-roll-sloshing model explains why the critical band should be identified from the coupled acceleration-to-risk response, rather than from an isolated liquid or roll natural frequency. The resulting Q-band term is embedded into a tracking controller with acceleration smoothing, soft band constraints, preview-adaptive weights, extended-state disturbance compensation, and hitch-angle-based parameter scheduling. The method is validated in 5-pins simulations and 1:14 model-truck experiments, reducing peak rollover-risk proxy from xxx to xxx while maintaining acceptable tracking error and real-time performance.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Anti-rollover control, semi-trailer tanker, liquid sloshing, path tracking, model predictive control, frequency-band suppression.
+\end{IEEEkeywords}

@@ -1,0 +1,563 @@
+
+\documentclass[UTF8,zihao=-4]{ctexrep}
+\usepackage[a4paper,margin=2.35cm]{geometry}
+\usepackage{amsmath,amssymb,bm,mathtools}
+\usepackage{booktabs,longtable,array,multirow,tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{amsthm}
+\usepackage{thmtools}
+\usepackage{cleveref}
+\usepackage[backend=biber,style=gb7714-2015,gbnamefmt=lowercase,sorting=none]{biblatex}
+\addbibresource{qband_art_refs_v3.bib}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\sisetup{detect-all=true,per-mode=symbol}
+\lstset{basicstyle=\ttfamily\small,breaklines=true,columns=fullflexible,frame=single}
+\setlist[itemize]{leftmargin=2em}
+\setlist[enumerate]{leftmargin=2em}
+
+\newcommand{\Qband}{$Q_{\mathrm{band}}$}
+\newcommand{\ay}{a_y}
+\newcommand{\LTR}{\mathrm{LTR}}
+\newcommand{\T}{\mathrm{T}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\diag}{\mathrm{diag}}
+\newcommand{\sat}{\mathrm{sat}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\bvec}[1]{\bm{#1}}
+\newtheorem{assumption}{假设}
+\newtheorem{proposition}{命题}
+\newtheorem{remark}{说明}
+
+\title{\texorpdfstring{$Q_{\mathrm{band}}$}{Qband}-ART：半挂液罐车自适应频带抑制防侧翻跟踪控制\\
+\large \texorpdfstring{$Q_{\mathrm{band}}$}{Qband}-ART: Adaptive Band Suppression for Anti-Rollover Tracking of Semi-Trailer Tankers}
+\author{技术报告草稿}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+半挂液罐车在换道、避障和弯道行驶中受到横向加速度激励。由于部分充液条件下液体自由液面晃动与悬架侧倾、挂车铰接和轮载转移相互耦合，车辆侧翻风险不仅取决于瞬时横向加速度峰值，也取决于横向激励在车辆--液体耦合危险频带内的能量分布。传统防侧翻控制通常依赖显式液体摆角、侧倾角或横向载荷转移率（lateral load transfer ratio, LTR）预测模型，但在实车和缩比例模型车上会受到液体参数难标定、液体相位不可观测、挂车传感器难布置、优化维数高和嵌入式实时性不足等限制。本文提出 \Qband-ART（Adaptive Band Suppression for Anti-Rollover Tracking），其基本思想是：不把液体状态作为在线控制器的必要状态，而是将可预测的横向加速度序列作为车液耦合系统的输入，约束其在危险频带内的投影能量，从输入侧主动避免激发悬架--液体耦合模态。本文首先综述液罐车车液耦合建模、防侧翻规划与控制以及半挂车跟踪控制的研究现状；随后建立小车--悬架倒立摆--液体正摆耦合简化侧向模型，说明危险频率应由横向激励到风险输出的耦合频响峰值确定，而非由单独液体摆或悬架侧倾固有频率决定；进一步给出 \Qband 频带投影算子、差分平滑算子、频带能量软约束、预瞄自适应权重和反馈兜底调权的完整构造；最后结合二自由度牵引车动力学、ESO 扰动观测、运动--动力学耦合铰接角估计和铰接角随动等效质量/惯量调度，形成面向工程落地的防侧翻跟踪 NMPC 框架。由于 \Qband 的构造只依赖预测横向加速度序列，它可作为简单二次型代价或软约束接入不同运动学/动力学 MPC 控制器中。仿真验证（5-pins 工况消融）、1:14 液罐车模型试验（正交试验）以及与主动转向防侧翻方法的对比效果数据在本文中预留，待后续实测结果填入。
+\end{abstract}
+
+\noindent\textbf{关键词：} 半挂液罐车；防侧翻；液体晃动；模型预测控制；横向载荷转移率；扩张状态观测器；铰接角估计；频带能量约束；\Qband
+
+\tableofcontents
+
+\chapter{研究背景、相关工作与问题定义}
+
+\section{半挂液罐车侧翻风险与工程约束}
+液罐车是危化品和大宗液体介质道路运输的关键装备。由于其质心高、载荷流动性强、运输介质事故后果严重，侧翻长期是液罐车运行安全中的核心风险。已有事故资料表明，液罐车侧翻往往与急转向、避让、弯道超速、驾驶失误以及道路环境突变相关，且可能进一步引发泄漏、燃烧、爆炸和环境污染等次生灾害\cite{chengshuo2023,lijian2014,chenxiaoyong2023,wangyang2023,authority_tank_truck2022,wenling_accident2022}。相关法规和标准通常要求液罐车避免满载热胀风险，非满载状态下的自由液面又会引入显著晃动效应\cite{GB18564-1,TSGR0005-2011}。因此，液罐车防侧翻控制不能只沿用普通刚体商用车的侧向稳定控制思路，而必须考虑车--液耦合导致的动态侧翻风险。
+
+半挂液罐车相比整体式液罐车进一步存在牵引车--挂车铰接耦合。挂车姿态、铰接角、挂车侧向加速度和挂车轮载转移往往比牵引车状态更直接反映罐体风险，但在量产或低成本自动驾驶系统中，挂车 IMU、挂车 GPS/RTK 或轮载传感器并不总是可用。挂车经常更换、传感器线束布置困难、挂车电气接口不统一以及可靠性维护成本高，使得“在挂车上完整布置姿态和轮载感知”难以成为普适工程方案。本文后续控制器因此以牵引车可稳定获取的车速、横摆角速度、侧向加速度、转向状态和局部轨迹为主，采用运动学/动力学外推估计挂车铰接角，并用 ESO 吸收挂车、液体、轮胎和建模误差的综合扰动。
+
+\section{车液耦合建模与液体晃动研究}
+液罐车的车--液耦合效应通常可分为准静态质心迁移和瞬态晃动冲击两类。前者由自由液面倾斜和液体质心横向偏移引起，直接增加侧倾力矩；后者由转向、变道和避障等非稳态激励引起，表现为液体附加力和附加力矩的相位滞后、峰值放大和衰减过程\cite{maohaijian2021fsi,huangyang2017impact,wangqiongyao2017sloshing,wanying2020antirolover}。中等充液率通常对应更显著的自由液面晃动和更不利的动态稳定性，而高充液率下自由液面受限，晃动幅值可能减小但刚体质心高度和总质量效应更强\cite{wangxiaorun2022lateralacc,wangqiongyao2017sloshing,chenyibao2016crosssection}。
+
+现有液体晃动建模方法大体可分为准静态模型、机械等效模型、流体动力学模型和实验研究方法\cite{jiaxinhong2022review}。准静态模型便于分析稳态横向加速度作用下的质心迁移规律，但难以描述转向过程中的相位滞后和残余晃动；CFD 和流固耦合模型精度高，但求解成本过大，通常适合离线机理分析和模型标定；机械等效模型用单摆、多摆、弹簧--质量--阻尼或多自由度摆近似液体主导模态，兼顾物理解释性与计算效率，因而在控制和规划中最常见\cite{salem2000rollover,yangxiujian2018multimass,wuxiangji2018sloshingmodel,Komasa2023observing}。本文采用的小车--悬架倒立摆--液体正摆简化侧向模型并非为了完整复现液面形态，而是为了解释横向激励频率、悬架侧倾模态和液体晃动模态之间的耦合关系，并据此构造可直接嵌入现有预测控制器的输入频带抑制项。
+
+\section{防侧翻动力学建模与主动控制方法}
+在液罐车动力学建模中，整体式车辆常采用自行车模型、三自由度平面模型或含侧倾自由度的四自由度模型，并与单摆、椭圆规摆或势流近似模型耦合\cite{renyuanyuan2020precisemodel,wanying2020antirolover,yuzhixin2018mpc}。半挂液罐车由于牵引车、挂车和第五轮铰接结构的存在，通常需要进一步引入牵引车横摆、挂车横摆、牵引车/挂车侧倾和液体晃动状态\cite{zongchangfu2014identification,niezhigen2015heavyduty,yuzhixin2018mpc,yuzhixin2019optimalcontrol}。此类模型能够更直接地预测 LTR 和侧倾状态，但状态维数高、参数标定复杂，并且在实车中对挂车姿态和液体相位观测要求较高。
+
+防侧翻主动安全方法大体包括主动悬架、差动制动、分布式驱动和主动转向等执行方式\cite{ActiveSuspension,DifferentialBrake,ActiveSteering}。主动悬架直接作用于侧倾自由度，但硬件复杂；差动制动工程基础较好，但通过横摆力矩间接影响侧倾；主动转向通过改变路径和横向激励直接调节侧倾风险，在自动驾驶条件下具有较好的预防性潜力。液罐车领域已有研究采用等效液体模型、MPC、LQR、模糊控制、无模型自适应控制和 $H_\infty$ 控制等方法实现差动制动或转向防侧翻\cite{zhaoweiqiang2018equivalent,zhaoweiqiang2019semitrailer,Reviewer2_SunWencai2022,MFAC_LiXiansheng2021,zhao2019hinfty}。然而，现有方法总体仍偏向“危险出现后的临险抑制”，即依赖 LTR、侧倾角速度或轮载转移指标接近阈值后触发控制；对于自动驾驶液罐车，更理想的策略应在规划和跟踪阶段主动避免产生会激发液体/侧倾耦合模态的横向激励。
+
+\section{预测优化控制与嵌入式实时实现}
+模型预测控制可将轨迹跟踪、执行器约束、侧向加速度约束和风险软约束统一到滚动优化框架中，是车辆防侧翻规划与控制中的重要方法\cite{Cutler1980DynamicMatrixControl,BookMPC}。软约束在处理安全边界和可行性冲突时尤为重要，可避免硬约束导致优化不可行，同时通过重罚松弛变量维持安全优先\cite{soft_constraint_Eben2010}。嵌入式实时 MPC 还需关注优化变量规模、模型非线性程度、稀疏控制节点、warm start 和单射/多重射击结构，相关快速 MPC 实现经验表明，减少决策变量和等式约束通常比单纯增加求解器迭代次数更有效\cite{EbenLi_FastMPC}。
+
+在本研究的 1:14 模型车工程落地中，Jetson Orin NX 上的稠密 NMPC 在控制步数增加时求解时间过长，低速段还存在横向可控性梯度弱、优化器易打满转向的问题。因此，工程控制器采用低速 Pure Pursuit、中速软切换、高速 NMPC 的混合结构，NMPC 内部采用单射法、速度相关参考点重采样和航向角 $\pm\pi$ wrap 保护；\Qband 模块只在 NMPC 有效区间内启用，且作用对象为预测横向加速度序列，而非稀疏阶梯控制量本身。这种设计表明，\Qband 的工程接入并不要求重构原有跟踪模型；只要控制器能够在预测域内计算横向加速度序列，即可通过增加相应频带能量代价项和软约束实现防侧翻抗激励能力。
+
+\section{本文思路与主要贡献}
+本文围绕“免液体状态观测、低建模依赖、可工程部署”的目标，形成 \Qband-ART 方法。相较于显式液体状态 MPC 或直接 LTR 约束 MPC，本文方法的核心贡献包括：
+\begin{enumerate}[label=\textbf{C\arabic*.}]
+  \item 建立小车--悬架倒立摆--液体正摆耦合简化侧向模型，说明液罐车防侧翻控制应抑制横向加速度到风险输出的耦合频响峰值频带，而不是只避开单独液体摆或悬架侧倾固有频率。
+  \item 构造 \Qband 频带投影算子，将预测时域横向加速度序列映射为危险频带能量二次型，并与 $\ay$ 幅值、一阶差分、二阶差分和软约束共同构成抗激励 NMPC。
+  \item 提出基于未来参考轨迹和上一周期预测横向加速度序列的 preview 自适应权重，使频带抑制在高风险工况到来前提前增强，避免纯反馈频带权重“遇险后才调高”的滞后。
+  \item 建立二自由度牵引车动力学 + ESO 扰动观测 + 运动/动力学耦合铰接角估计 + 铰接角随动等效质量/惯量调度的半挂车轨迹跟踪控制框架，适配经常换挂且挂车传感器难布置的工程条件。
+  \item 说明 \Qband 在简化 MATLAB 侧向模型、1:14 模型车运动学 NMPC 和半挂车 ESO tracker 框架中的一致实现形式：不改变原控制器状态定义，只需从预测模型中提取 $\bm A_y$ 并引入 $\bm A_y^{\T}\bm Q_i\bm A_y$ 及其软约束，即可形成防侧翻抗激励能力。
+\end{enumerate}
+
+\chapter{简化侧向建模与 \Qband 抗激励理论}
+
+\section{小车--悬架倒立摆--液体正摆简化侧向模型}
+简化侧向模型是本文理论分析的主模型。该模型将非簧载/底盘等效为横向运动小车，将簧上罐体等效为通过悬架扭转弹簧和阻尼连接在底盘铰点上的倒立摆，将液体主晃动等效为固定在簧上质量上的正单摆。它并不追求完整复现实际半挂液罐车的三维车--液--路耦合过程，而是保留防侧翻控制最关键的两个横向动态机制：悬架侧倾模态和液体晃动模态。
+
+\subsection{结构抽象与广义坐标}
+令广义坐标为
+\begin{equation}
+    \bm q = \begin{bmatrix} y & \phi & \theta \end{bmatrix}^{\T},
+\end{equation}
+其中 $y$ 为小车横向位移，$\phi$ 为簧上罐体相对竖直方向侧倾角，$\theta$ 为液体相对罐体竖直向下方向摆角。液体绝对摆角为 $\alpha=\phi+\theta$。非簧载质量为 $m_u$，簧上罐体质量为 $m_s$，液体等效质量为 $m_p$。侧倾铰点高度为 $h_u$，簧上质心到侧倾铰点距离为 $l_s$，液体摆铰点到侧倾铰点距离为 $h_p$，液体摆长为 $l_p$。
+
+簧上质量质心坐标为
+\begin{equation}
+    y_s = y+l_s\sin\phi,\qquad z_s=h_u+l_s\cos\phi .
+\end{equation}
+液体摆铰点坐标为
+\begin{equation}
+    y_o = y+h_p\sin\phi,\qquad z_o=h_u+h_p\cos\phi .
+\end{equation}
+液体质量点坐标为
+\begin{equation}
+    y_p=y_o+l_p\sin(\phi+\theta),\qquad
+    z_p=z_o-l_p\cos(\phi+\theta).
+\end{equation}
+
+\subsection{非线性动力学构造}
+令 $I_x$ 为簧上罐体绕侧倾轴的等效转动惯量。系统动能为
+\begin{equation}
+\begin{aligned}
+T={}&\frac{1}{2}m_u\dot y^2+\frac{1}{2}m_s(\dot y_s^2+\dot z_s^2)+\frac{1}{2}I_x\dot\phi^2
+    +\frac{1}{2}m_p(\dot y_p^2+\dot z_p^2).
+\end{aligned}
+\end{equation}
+势能为
+\begin{equation}
+    V=m_sgz_s+m_pgz_p+\frac{1}{2}k_s\phi^2.
+\end{equation}
+非保守广义力为
+\begin{equation}
+    Q_{\phi}^{\mathrm{nc}}=-c_s\dot\phi,\qquad Q_{\theta}^{\mathrm{nc}}=-c_l\dot\theta,
+\end{equation}
+其中 $k_s,c_s$ 分别表征悬架等效侧倾刚度和阻尼，$c_l$ 表征液体等效晃动阻尼。由拉格朗日方程
+\begin{equation}
+    \frac{\dd}{\dd t}\frac{\partial (T-V)}{\partial \dot q_i}-\frac{\partial (T-V)}{\partial q_i}=Q_i^{\mathrm{nc}}
+\end{equation}
+可得到完整非线性动力学。在线控制器并不直接使用该非线性模型；本文只利用其线性化结构分析耦合模态和危险频带。
+
+\subsection{线性化耦合模态与危险频带}
+在 $\phi,\theta$ 小角度、以底部横向加速度 $\ay=\ddot y$ 为外部输入时，简化侧向模型可线性化为
+\begin{equation}
+    \bm M\ddot{\bm x}_r+\bm C\dot{\bm x}_r+\bm K\bm x_r=\bm B_a \ay,
+    \qquad
+    \bm x_r=\begin{bmatrix}\phi&\theta\end{bmatrix}^{\T}.
+    \label{eq:modelB_linear}
+\end{equation}
+其中 $\bm M,\bm C,\bm K$ 一般均非对角。若忽略阻尼，自由振动模态满足
+\begin{equation}
+    \det(\bm K-\omega^2\bm M)=0.
+    \label{eq:coupled_modal}
+\end{equation}
+因此，系统真实固有频率不是孤立的悬架侧倾频率和液体单摆频率，而是二者耦合后的模态频率。耦合较弱时，两个模态分别接近悬架侧倾主导模态和液体晃动主导模态；耦合较强或频率接近时，模态会发生偏移、分裂或形成宽峰。
+
+对防侧翻控制真正重要的不是 $\phi$ 或 $\theta$ 自由振动频率本身，而是横向激励到风险输出的频率响应。设风险输出为
+\begin{equation}
+    z=C_z\bm x_r+D_z\ay,
+\end{equation}
+其中 $z$ 可取动态 LTR 分量、侧倾力矩、侧倾角速度组合或液体附加力矩，则
+\begin{equation}
+    G_{za}(s)=\frac{Z(s)}{A_y(s)}=C_z(s^2\bm M+s\bm C+\bm K)^{-1}\bm B_a+D_z.
+\end{equation}
+危险频带应由 $|G_{za}(j\omega)|$ 的峰值和宽峰区域确定，而不是简单地只避开 $\omega_l$ 或悬架侧倾频率。该结论解释了 \Qband 采用频带而非单一频率的必要性。
+
+\section{侧翻风险代理与 LTR 估算边界}
+当缺少轮载传感器时，不能将 LTR 作为可靠真值直接约束。本文仅在仿真和分析中使用力矩平衡近似定义 LTR 代理量：
+\begin{equation}
+    \LTR_{\mathrm{est}}=\frac{M_{\mathrm{roll}}}{(m_u+m_s+m_p)gT_{\mathrm{track}}/2},
+    \label{eq:ltr_est}
+\end{equation}
+其中 $T_{\mathrm{track}}$ 仅用于 LTR 归一化，不决定车身可视化宽度。侧倾力矩近似为
+\begin{equation}
+    M_{\mathrm{roll}}=\sum_i m_i(\ay z_i-gy_i),\qquad i\in\{u,s,p\}.
+\end{equation}
+该估计能反映横向惯性力、重力恢复力和液体/簧上质量横向偏移的综合作用，但不是轮载真值。工程约束不依赖其精确值，而以可观测 $\ay$、$\dot\phi$、横摆响应、模型残差和频带能量作为安全代理。
+
+\section{\Qband 频带能量算子构造}
+\subsection{预测横向加速度序列}
+在 NMPC 预测时域内，令采样时间为 $\Delta t$，预测步数为 $N$。由车辆预测模型得到横向加速度序列
+\begin{equation}
+    \bm A_y=\begin{bmatrix}a_{y,0}&a_{y,1}&\cdots&a_{y,N-1}\end{bmatrix}^{\T}\in\R^N.
+\end{equation}
+在简化侧向模型中，$a_{y,k}=(u_k-v_{y,k})/\tau_v$；在模型车运动学 NMPC 中，$a_{y,k}\approx v_x^2\tan\delta_k/L$ 或快速模式下 $a_{y,k}\approx v_x^2\delta_k/L$；在二自由度动力学模型中，$a_{y,k}\approx \dot v_{y,k}+v_{x,k}r_k$。
+
+\subsection{差分平滑算子}
+一阶差分矩阵 $\bm D_1\in\R^{(N-1)\times N}$ 定义为
+\begin{equation}
+    (\bm D_1\bm A_y)_k=a_{y,k+1}-a_{y,k},
+\end{equation}
+二阶差分矩阵 $\bm D_2\in\R^{(N-2)\times N}$ 定义为
+\begin{equation}
+    (\bm D_2\bm A_y)_k=a_{y,k+2}-2a_{y,k+1}+a_{y,k}.
+\end{equation}
+$\bm D_1$ 抑制横向 jerk，$\bm D_2$ 抑制快速反向激励和曲率振荡。二者不针对特定频带，但对高频和突变激励具有基础平滑作用，应作为全程小权重正则项保留。
+
+\subsection{频率投影算子}
+对候选危险频带 $\mathcal B_i=[f_i^-,f_i^+]$，取 $n_f$ 个离散频率 $f_{ij}$。定义时间网格 $t_k=k\Delta t$，并构造
+\begin{equation}
+    \bm c_{ij}=\begin{bmatrix}\cos(2\pi f_{ij}t_0)&\cdots&\cos(2\pi f_{ij}t_{N-1})\end{bmatrix}^{\T},
+\end{equation}
+\begin{equation}
+    \bm s_{ij}=\begin{bmatrix}\sin(2\pi f_{ij}t_0)&\cdots&\sin(2\pi f_{ij}t_{N-1})\end{bmatrix}^{\T}.
+\end{equation}
+则 $\bm A_y$ 在该频率上的投影能量为
+\begin{equation}
+    E_{ij}=\frac{1}{N^2}\left[(\bm c_{ij}^{\T}\bm A_y)^2+(\bm s_{ij}^{\T}\bm A_y)^2\right].
+\end{equation}
+频带能量为
+\begin{equation}
+    E_i(\bm A_y)=\bm A_y^{\T}\bm Q_i\bm A_y,
+    \label{eq:band_energy}
+\end{equation}
+其中
+\begin{equation}
+    \bm Q_i=\frac{1}{N^2}\sum_{j=1}^{n_f}\left(\bm c_{ij}\bm c_{ij}^{\T}+\bm s_{ij}\bm s_{ij}^{\T}\right)\succeq 0 .
+    \label{eq:q_i}
+\end{equation}
+式\eqref{eq:q_i}是 \Qband 的核心算子。它不增加 NMPC 状态，只在目标函数或约束中增加关于 $\bm A_y$ 的二次型。
+
+\subsection{\Qband 代价与频带能量软约束}
+频带惩罚项定义为
+\begin{equation}
+    J_{\mathrm{band}}=\sum_{i=1}^{n_b}w_i E_i(\bm A_y)=\bm A_y^{\T}\left(\sum_{i=1}^{n_b}w_i\bm Q_i\right)\bm A_y.
+\end{equation}
+为了避免低风险段全程高权重损害跟踪，同时在高风险段提供近似安全约束，可进一步加入软约束：
+\begin{equation}
+    E_i(\bm A_y)\leq \bar E_i+s_i,
+    \qquad s_i\geq 0,
+    \label{eq:soft_band_constraint}
+\end{equation}
+并在代价中加入
+\begin{equation}
+    J_s=\sum_{i=1}^{n_b}\rho_i s_i^2.
+\end{equation}
+软约束的意义是：当预测侧向加速度在危险频带内的能量低于阈值时，约束不活跃，不影响跟踪；当未来轨迹或控制序列可能激发危险模态时，约束强制优化器降低对应频带能量，除非付出高额松弛代价。相比单纯高权重 $J_{\mathrm{band}}$，软约束更符合“低风险高精度、高风险强安全”的目标。
+
+\section{从频带输入能量到侧翻风险上界的证明框架}
+\begin{assumption}[稳定线性化输入--输出模型]
+在目标工况附近，简化侧向模型的风险输出 $z$ 与横向加速度输入 $\ay$ 的关系可由稳定线性系统近似，且目标频带 $\mathcal B$ 内增益上界存在：
+\begin{equation}
+    |G_{za}(j\omega)|\leq \bar G_{\mathcal B},\qquad \omega/(2\pi)\in\mathcal B.
+\end{equation}
+\end{assumption}
+
+\begin{assumption}[非目标频带与初值有界]
+非目标频带输入、初始侧倾/液体残余能量、模型误差和传感器偏差对风险输出的贡献有保守上界 $R_\perp$、$R_0$ 和 $R_m$。
+\end{assumption}
+
+\begin{proposition}[频带能量充分条件]
+设 $z_{\mathcal B}$ 为风险输出中由目标频带横向激励产生的分量。若目标频带输入能量满足
+\begin{equation}
+    \|a_{y,\mathcal B}\|_2^2\leq \bar E_{\mathcal B},
+\end{equation}
+则
+\begin{equation}
+    \|z_{\mathcal B}\|_2\leq \bar G_{\mathcal B}\sqrt{\bar E_{\mathcal B}}.
+\end{equation}
+进一步，若侧翻安全裕度满足
+\begin{equation}
+    |\LTR_{\mathrm{stat}}|+\bar G_{\mathcal B}\sqrt{\bar E_{\mathcal B}}+R_\perp+R_0+R_m\leq \LTR_{\lim},
+    \label{eq:ltr_margin_condition}
+\end{equation}
+则在该保守模型和给定裕度假设下，动态 LTR 不超过极限阈值 $\LTR_{\lim}$。
+\end{proposition}
+
+\begin{proof}
+由 Parseval 定理和稳定线性系统的频域增益界，目标频带输出能量不超过目标频带输入能量与最大增益平方的乘积，即
+\begin{equation}
+    \|z_{\mathcal B}\|_2^2\leq \bar G_{\mathcal B}^2\|a_{y,\mathcal B}\|_2^2.
+\end{equation}
+将非目标频带、初值和模型误差贡献作为保守加性上界，并与静态 LTR 分量叠加，即得式\eqref{eq:ltr_margin_condition}。该结论是充分条件，不是必要条件；其保守性来自线性化、频带离散化、增益上界和误差裕度。
+\end{proof}
+
+上述命题说明，在无法准确观测液体相位和真实 LTR 的情况下，仍可通过约束横向输入在危险频带内的能量获得保守安全机制。工程上 $\bar E_i$ 可由简化侧向模型线性化频响、缩比例模型正交试验或高保真仿真标定得到。
+
+\section{Preview 主导的自适应频带权重}
+\subsection{纯反馈调权的滞后问题}
+仅根据已观测侧倾角速度 $p=\dot\phi$ 或横向加速度残差的频带能量调权，会出现“危险发生后才提高权重”的滞后。在线监测器能够识别系统已被激发，但对高风险换道段的提前预防不足。因此 \Qband-ART 的自适应逻辑应以 preview 风险为主、反馈风险为辅。
+
+\subsection{基于参考轨迹的 preview 风险}
+在预测时域内由参考轨迹获得 $y_{\mathrm{ref}}$、$\dot y_{\mathrm{ref}}$ 和 $\ddot y_{\mathrm{ref}}$，或在路径跟踪控制器中由参考航向变化估计
+\begin{equation}
+    a_{y,\mathrm{ref},k}\approx v_x\frac{\psi_{\mathrm{ref},k+1}-\psi_{\mathrm{ref},k}}{\Delta t}.
+\end{equation}
+定义参考激励统计风险
+\begin{equation}
+    r_a=\max\left\{0,\frac{\max_k|a_{y,\mathrm{ref},k}|}{a_{y,\mathrm{safe}}}-1,\eta_m\left(\frac{\mathrm{mean}_k|a_{y,\mathrm{ref},k}|}{\bar a_{\mathrm{safe}}}-1\right),\eta_d\left(\frac{\max_k|\Delta a_{y,\mathrm{ref},k}|}{\Delta a_{\mathrm{safe}}}-1\right)\right\}.
+\end{equation}
+同时计算参考序列在各危险频带中的能量
+\begin{equation}
+    E_{\mathrm{ref},i}=\bm A_{y,\mathrm{ref}}^{\T}\bm Q_i\bm A_{y,\mathrm{ref}}.
+\end{equation}
+频带 $i$ 的 preview 激活量取
+\begin{equation}
+    \lambda_i^{\mathrm{pre}}=1-\exp\left[-\kappa\max\left(0,\alpha_i\left(\frac{E_{\mathrm{ref},i}}{\bar E_{\mathrm{ref},i}}-1\right)+\beta r_a\right)\right].
+\end{equation}
+由此得到原始权重
+\begin{equation}
+    w_i^{\mathrm{raw}}=w_i^{\min}+\lambda_i^{\mathrm{pre}}(w_i^{\mathrm{tar}}-w_i^{\min}).
+\end{equation}
+$w_i^{\mathrm{tar}}$ 可取在最危险工况中已验证有效的固定 \Qband 权重，$w_i^{\min}$ 则用于低风险段保持跟踪精度。
+
+\subsection{反馈频带监测与残余晃动记忆}
+反馈部分不用于首次提前预警，而用于识别真实系统是否已被激发。对输入 $u=\ay$ 和输出 $y=p$ 或 $y=[p,e_{ay}]$，在每个频带计算输入能量 $E_{u,i}$、输出能量 $E_{y,i}$ 和近似放大率
+\begin{equation}
+    G_i=\sqrt{\frac{E_{y,i}}{E_{u,i}+\epsilon}}.
+\end{equation}
+若同时估计互谱，可加入相干性
+\begin{equation}
+    \gamma_i^2=\frac{|S_{uy,i}|^2}{S_{uu,i}S_{yy,i}+\epsilon}.
+\end{equation}
+反馈风险可写为
+\begin{equation}
+    r_i^{\mathrm{fb}}=k_g\max\left(0,\frac{G_i}{G_{i,0}}-1\right)\gamma_i^2+k_rE_{y,i}(1-\gamma_i^2).
+\end{equation}
+为避免危险刚结束就降低权重，引入非对称平滑：
+\begin{equation}
+    w_i(t)=
+    \begin{cases}
+    (1-\alpha_{\uparrow})w_i(t-\Delta t)+\alpha_{\uparrow}w_i^{\mathrm{raw}}(t), & w_i^{\mathrm{raw}}>w_i(t-\Delta t),\\
+    (1-\alpha_{\downarrow})w_i(t-\Delta t)+\alpha_{\downarrow}w_i^{\mathrm{raw}}(t), & w_i^{\mathrm{raw}}\leq w_i(t-\Delta t),
+    \end{cases}
+\end{equation}
+其中 $\alpha_{\uparrow}\gg\alpha_{\downarrow}$。这保证未来高风险到来时快速进入保守模式，而风险结束后缓慢释放，等待液体残余晃动衰减。
+
+\chapter{半挂车跟踪模型、ESO 与 \Qband-ART 控制构建}
+
+\section{半挂车少传感跟踪控制问题}
+半挂液罐车轨迹跟踪面临三个工程难点。第一，挂车姿态难以低成本稳定观测。挂车经常更换，挂车端 IMU/GNSS 难以成为所有运营车辆的标准配置。第二，牵引车动力学模型难以准确覆盖挂车和液体反作用。若用完整半挂车模型在线控制，需要大量挂车质量、惯量、轮胎、悬架和铰接参数；若只用牵引车模型，则挂车和液体作用表现为未建模扰动。第三，防侧翻控制不能明显破坏低风险工况下的轨迹跟踪性能，尤其在低速或小曲率路段，控制器应保持普通路径跟踪器的稳定性和实时性。
+
+本文采用“牵引车二自由度动力学 + ESO 扰动观测 + 铰接角运动学/运动动力学外推 + 等效参数调度 + \Qband 输入抗激励”的结构。控制主链路仍以牵引车为闭环对象；挂车铰接角和等效参数作为先验调度进入名义模型或规划层；挂车、液体、轮胎和参数误差统一由 ESO 残差吸收。
+
+\section{二自由度牵引车动力学与 ESO 扰动观测}
+设牵引车纵向速度为 $v_x$，横向速度为 $v_y$，横摆角速度为 $r$，前轮转角为 $\delta$。线性轮胎模型下
+\begin{equation}
+    \alpha_f=\delta-\frac{v_y+l_fr}{v_x},\qquad
+    \alpha_r=-\frac{v_y-l_rr}{v_x},
+\end{equation}
+\begin{equation}
+    F_{yf}=C_f\alpha_f,
+    \qquad F_{yr}=C_r\alpha_r.
+\end{equation}
+牵引车名义二自由度模型写为
+\begin{equation}
+\begin{aligned}
+    \dot v_y &= \frac{F_{yf}\cos\delta+F_{yr}}{m_{\mathrm{eq}}}-v_xr+d_y,\\
+    \dot r &= \frac{l_fF_{yf}\cos\delta-l_rF_{yr}}{I_{z,\mathrm{eq}}}+d_r,
+\end{aligned}
+\label{eq:2dof_eso}
+\end{equation}
+其中 $d_y,d_r$ 表示挂车牵连力、液体晃动、轮胎失配和道路扰动等综合残差。实际代码中可用 UKF/EKF 估计 $v_y$，并用 RLS 在有激励且侧偏角不过大时慢速修正 $C_f,C_r$；但高频控制中不建议让 $C_f,C_r$ 的 RLS 结果快速大幅进入 NMPC，可将其限制在固定或慢变范围内。
+
+对横摆通道，ESO 可采用
+\begin{equation}
+\begin{aligned}
+    \dot{\hat r} &= b_\delta\delta + \hat d_r + \beta_1(r-\hat r),\\
+    \dot{\hat d}_r &= \beta_2(r-\hat r),
+\end{aligned}
+\label{eq:eso_yaw}
+\end{equation}
+其中 $b_\delta\approx C_fl_f/I_{z,\mathrm{eq}}$。ESO 输出 $\hat d_r$ 作为 NMPC 中随预测步指数衰减的扰动补偿项或作为安全收缩因子。该结构的优势是：即使挂车状态和液体状态未被显式观测，牵引车横摆响应中无法由名义模型解释的部分仍可被归入扩张状态，从而提高跟踪鲁棒性。
+
+\section{铰接角开环估计与运动--动力学耦合修正}
+半挂车运动学模型中，牵引车航向角为 $\psi_1$，挂车航向角为 $\psi_2$，铰接角定义为
+\begin{equation}
+    \gamma=\psi_1-\psi_2.
+\end{equation}
+若各轴侧滑忽略，则
+\begin{equation}
+    \dot\psi_1=\frac{v_x}{L_1}\tan\delta,
+\end{equation}
+\begin{equation}
+    \dot\psi_2=\frac{v_x}{L_2}\left(\frac{L_h}{L_1}\tan\delta\cos\gamma+\sin\gamma\right),
+    \label{eq:trailer_kin}
+\end{equation}
+并有
+\begin{equation}
+    \dot\gamma=\dot\psi_1-\dot\psi_2.
+\end{equation}
+当 $\delta=0$ 且 $v_x>0$ 时，$\gamma=0$ 是渐近稳定平衡点；因此，在非极端工况和传感器条件有限时，基于牵引车横摆率与运动学方程开环外推 $\hat\gamma$ 不会产生持续稳态偏差。这一点使其适合作为参数调度和挂车轨迹外推的工程先验，而非强依赖挂车 IMU 的闭环状态。
+
+高速或较大侧向加速度下，挂车轴侧偏会使纯运动学模型低估挂车轨迹外偏。可引入运动--动力学耦合修正系数
+\begin{equation}
+    K_v=1-\frac{m_2v_x^2e}{L_1L_2k_3},
+\end{equation}
+得到
+\begin{equation}
+    \dot\psi_2=K_v\frac{v_x}{L_2}\left(\frac{L_h}{L_1}\tan\delta\cos\gamma+\sin\gamma\right),
+    \label{eq:trailer_ckds}
+\end{equation}
+其中 $k_3$ 为挂车等效轴侧偏刚度，按轮胎力符号约定通常为负，使得 $K_v\geq 1$。该项保留挂车轴线性动力学对铰接角外推精度的影响，但仍避免在控制层显式引入完整挂车动力学状态。
+
+\section{铰接角随动等效质量与横摆惯量调度}
+为在牵引车二自由度模型中引入挂车先验，可将挂车对牵引车横向/横摆响应的影响折算为随 $\hat\gamma$ 变化的等效质量和等效惯量。该处理不是完整半挂车动力学替代，而是给名义模型提供低频几何先验，其余高频误差仍由 ESO 吸收。
+
+一种零阶冻结铰接角近似为
+\begin{equation}
+    m_{x,\mathrm{eq}}(\hat\gamma)=m_1+m_2\cos^2\hat\gamma,
+    \qquad
+    m_{y,\mathrm{eq}}(\hat\gamma)=m_1+m_2\sin^2\hat\gamma.
+    \label{eq:eq_mass}
+\end{equation}
+该表达的直觉是：当 $\gamma\approx 0$ 时，挂车主要沿牵引车纵向被拖曳，横向瞬时惯性参与度较小；当铰接角增大时，挂车几何约束使更多挂车惯性投影到牵引车横向响应中。横摆等效惯量可采用几何投影近似
+\begin{equation}
+    I_{z,\mathrm{eq}}(\hat\gamma)=I_{z1}+I_{z2}\left(\frac{d_1}{d_2}\right)^2\cos^2\hat\gamma+m_2d_1^2\sin^2\hat\gamma,
+    \label{eq:eq_inertia}
+\end{equation}
+其中 $d_1,d_2$ 为牵引车质心、铰接点和挂车质心之间的等效几何距离。式\eqref{eq:eq_mass}--\eqref{eq:eq_inertia}应作为可调度先验而非严格物理定律；当 $\dot\gamma$ 较大或挂车轮胎进入非线性时，科氏、离心和侧偏力项会成为未建模力矩，由 ESO 或安全约束吸收。
+
+在 NMPC 中，可取
+\begin{equation}
+    m_{\mathrm{eq}}=m_{y,\mathrm{eq}}(\hat\gamma),\qquad I_z=I_{z,\mathrm{eq}}(\hat\gamma),
+\end{equation}
+并对其进行低通、上下限和变化率限制，避免参数调度自身引入高频不稳定。
+
+\section{\Qband-ART 预测优化问题构建}
+令 NMPC 状态为
+\begin{equation}
+    \bm x_k=[x_k,y_k,\psi_k,v_{y,k},r_k,\delta_k]^{\T}
+\end{equation}
+或在模型车简化版本中取
+\begin{equation}
+    \bm x_k=[x_k,y_k,\psi_k,\delta_k]^{\T}.
+\end{equation}
+控制量为期望前轮转角或其等效命令 $u_k=\delta_{\mathrm{cmd},k}$，执行器一阶滞后为
+\begin{equation}
+    \dot\delta=\frac{\delta_{\mathrm{cmd}}-\delta}{T_\delta}.
+\end{equation}
+预测横向加速度序列 $\bm A_y$ 由模型计算。\Qband-ART 的优化问题可写为
+\begin{equation}
+\begin{aligned}
+\min_{\bm U,\bm S}~~& J_{\mathrm{trk}}+J_u+J_{\Delta u}+J_{\ay}+J_{\Delta \ay}+J_{\Delta^2\ay}+J_{\mathrm{band}}+J_s,\\
+\mathrm{s.t.}~~& \bm x_{k+1}=f(\bm x_k,u_k,\hat d_k,m_{\mathrm{eq}},I_{z,\mathrm{eq}}),\\
+& |a_{y,k}|\leq a_{y,\max}^{\mathrm{dyn}},\\
+& u_{\min}\leq u_k\leq u_{\max},\qquad |u_k-u_{k-1}|\leq \Delta u_{\max},\\
+& E_i(\bm A_y)\leq \bar E_i+s_i,\\quad s_i\geq 0,
+\end{aligned}
+\label{eq:nmpc_problem}
+\end{equation}
+其中
+\begin{equation}
+    J_{\mathrm{trk}}=\sum_{k=0}^{N}\left(\|\bm p_k-\bm p_{k}^{\mathrm{ref}}\|_{Q_p}^2+q_\psi e_{\psi,k}^2\right),
+\end{equation}
+\begin{equation}
+    J_{\Delta \ay}=w_1\|\bm D_1\bm A_y\|_2^2,
+    \qquad
+    J_{\Delta^2\ay}=w_2\|\bm D_2\bm A_y\|_2^2,
+\end{equation}
+\begin{equation}
+    J_{\mathrm{band}}=\sum_iw_i(t)\bm A_y^{\T}\bm Q_i\bm A_y.
+\end{equation}
+
+\subsection{风险调度与安全收缩}
+定义综合风险门控
+\begin{equation}
+    R_{\mathrm{gate}}=\max\{R_{\mathrm{preview}},R_{\mathrm{pred}},R_{\mathrm{obs}}\},
+\end{equation}
+并映射为 $\lambda_R\in[0,1]$。低风险时 $\lambda_R\approx0$，高风险时 $\lambda_R\approx1$。可调度
+\begin{equation}
+    w_i(t)=w_i^{\min}+\lambda_R(w_i^{\mathrm{tar}}-w_i^{\min}),
+\end{equation}
+\begin{equation}
+    a_{y,\max}^{\mathrm{dyn}}=(1-\lambda_R)a_{y,\max}^{\mathrm{normal}}+\lambda_Ra_{y,\max}^{\mathrm{safe}},
+\end{equation}
+\begin{equation}
+    q_y(t)=(1-\lambda_R)q_y^{\mathrm{high}}+\lambda_Rq_y^{\mathrm{low}}.
+\end{equation}
+这对应“低风险精确跟踪、高风险允许偏离并抑制激励”的策略。若 $R_{\mathrm{obs}}>R_{\mathrm{danger}}$，外部安全监督器应绕过优化器，直接收紧转角、转角变化率和速度参考。
+
+
+\paragraph{工程接入说明。}
+\Qband 的构造本质是对预测横向加速度序列 $\bm A_y$ 增加频带二次型代价和能量软约束，因此它不依赖某一种特定车辆模型。对于运动学 NMPC，可由 $a_{y,k}\approx v_x^2\tan\delta_k/L$ 或快速近似 $a_{y,k}\approx v_x^2\delta_k/L$ 得到 $\bm A_y$；对于二自由度动力学 NMPC，可由 $a_{y,k}\approx \dot v_{y,k}+v_{x,k}r_k$ 得到 $\bm A_y$；对于含执行器一阶惯性的模型车稀疏控制器，则应对预测后的 $\delta_k$ 和 $a_{y,k}$ 施加频带抑制，而不是直接惩罚稀疏阶梯控制量本身。由此，现有运动学或动力学 MPC 只需引入对应的 $J_{\mathrm{band}}$ 和 $E_i(\bm A_y)\leq \bar E_i+s_i$，即可获得防侧翻抗激励能力，而无需重构原有跟踪控制器。
+
+\chapter{仿真与模型试验验证方案（预留）}
+
+\section{5-pins 工况消融仿真方案}
+仿真对象采用简化侧向模型的非线性版本作为真实对象，NMPC 内部不显式使用 $\phi$ 和 $\theta$，只预测横向运动和 $\ay$ 序列。5-pins 工况从 \SI{4}{s} 开始，包含五组横向位移相同、完成时间逐渐缩短的双移线，用于形成由低风险到高风险的连续激励强度梯度。消融组合建议包括：
+\begin{enumerate}[label=(\arabic*)]
+  \item Baseline：仅轨迹跟踪；
+  \item $\ay$ hard constraint；
+  \item $\ay$ cost；
+  \item $\Delta\ay$ only；
+  \item $\Delta^2\ay$ only；
+  \item fixed \Qband；
+  \item feedback adaptive \Qband；
+  \item preview adaptive \Qband；
+  \item preview + feedback adaptive \Qband；
+  \item fixed \Qband + band soft constraint；
+  \item preview adaptive \Qband + band soft constraint。
+\end{enumerate}
+
+评价指标包括峰值 $|\LTR_{\mathrm{est}}|$、RMS LTR、峰值 $|\ay|$、峰值侧倾角、峰值液体摆角、全程 RMS 跟踪误差、每个双移线分段 RMS 误差和平均求解时间。预留表格如下。
+
+\begin{table}[htbp]
+\centering
+\caption{5-pins 消融仿真总体统计结果（待填入）}
+\begin{tabularx}{\linewidth}{lXXXXXX}
+\toprule
+策略 & 峰值 $|\LTR|$ & RMS LTR & 峰值 $|\ay|$ & RMS 跟踪误差 & 平均求解时间 & 备注\\
+\midrule
+Baseline & 待填 & 待填 & 待填 & 待填 & 待填 & 待填\\
+固定 \Qband & 待填 & 待填 & 待填 & 待填 & 待填 & 低风险跟踪损失\\
+Preview \Qband & 待填 & 待填 & 待填 & 待填 & 待填 & 高风险提前抑制\\
+Preview + soft constraint & 待填 & 待填 & 待填 & 待填 & 待填 & 安全约束激活\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{1:14 液罐车模型试验方案}
+模型试验用于验证 \Qband 能量阈值和在线控制器的工程有效性。建议采用正交试验设计，因素包括车速、横向位移/路径曲率、换道时间、充液率、\Qband 开关/权重、频带能量约束开关和参考轨迹激进程度。响应指标包括最大侧倾角速度、侧向加速度峰值、路径跟踪误差、频带能量、是否出现翘轮/明显侧倾临界现象，以及控制周期和求解失败率。
+
+\begin{table}[htbp]
+\centering
+\caption{模型车正交试验因素与水平（示例，待按实车试验条件修正）}
+\begin{tabular}{llll}
+\toprule
+因素 & 水平 1 & 水平 2 & 水平 3\\
+\midrule
+车速 & 待填 & 待填 & 待填\\
+充液率 & 待填 & 待填 & 待填\\
+换道时间 & 待填 & 待填 & 待填\\
+控制策略 & Baseline & \Qband penalty & \Qband + soft constraint\\
+主频设定 & \SI{1.2}{Hz} & \SI{1.5}{Hz} & \SI{1.8}{Hz}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{与主动转向防侧翻方法的对比}
+本文方法应与已有主动转向防侧翻跟踪控制进行对比。预期对比结论不是宣称 \Qband 在所有指标上绝对优于显式液体/主动转向模型，而是强调在接近防侧翻效果的同时，\Qband-ART 具有以下工程优势：
+\begin{enumerate}[label=(\arabic*)]
+  \item 不要求在线观测液体摆角、液体相位或真实轮载；
+  \item 不要求在挂车上稳定布置 IMU/GNSS 或轮载传感器；
+  \item 可作为代价项和软约束接入现有运动学或动力学 NMPC；
+  \item 主要依赖可预测横向加速度序列，实时计算负担小；
+  \item 低风险段可维持普通跟踪控制器的精度，高风险段通过 preview 提前提高抑制强度。
+\end{enumerate}
+最终论文中可填入如下表格。
+
+\begin{table}[htbp]
+\centering
+\caption{与主动转向防侧翻方法的效果和工程复杂度对比（待填入）}
+\begin{tabularx}{\linewidth}{lXXXX}
+\toprule
+方法 & 防侧翻效果 & 跟踪误差 & 传感器依赖 & 工程复杂度\\
+\midrule
+主动转向 + 显式侧翻模型 & 待填 & 待填 & 液体/侧倾状态或 LTR 估计 & 较高\\
+\Qband-ART & 待填 & 待填 & 牵引车可观测状态 + 参考轨迹 & 较低\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{结论与后续研究}
+本文将半挂液罐车防侧翻跟踪控制从“显式液体状态预测与 LTR 约束”转化为“横向激励危险频带能量抑制”问题，提出 \Qband-ART 方法。小车--悬架倒立摆--液体正摆简化侧向模型表明，悬架侧倾与液体晃动耦合后，危险频率应由 $\ay\rightarrow z$ 的耦合频响峰值确定，而不能仅由单独液体摆或悬架侧倾固有频率判断。基于此，本文构造了预测横向加速度序列的频带投影二次型、差分平滑项、频带能量软约束和 preview 自适应权重，并将其嵌入二自由度牵引车动力学 + ESO + 铰接角外推 + 等效参数调度的轨迹跟踪控制框架。
+
+后续工作包括：
+\begin{enumerate}[label=(\arabic*)]
+  \item 用简化侧向模型线性化和模型车扫频试验确定危险频带与能量阈值；
+  \item 完成 5-pins 仿真消融，量化 fixed、feedback adaptive、preview adaptive 和 band soft constraint 的安全--跟踪折中；
+  \item 完成 1:14 液罐车正交试验，验证频带能量阈值与侧倾风险的单调关系；
+  \item 将 \Qband 模块稳定集成到实车/模型车混合 PP-NMPC 控制器中，评估求解时间、失败率和低速切换稳定性；
+  \item 与主动转向防侧翻跟踪控制进行统一工况对比，明确本文方法在“少传感、低建模、可部署”条件下的优势边界。
+\end{enumerate}
+
+\printbibliography[heading=bibintoc,title={参考文献}]
+
+\end{document}

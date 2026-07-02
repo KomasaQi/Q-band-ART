@@ -1,0 +1,153 @@
+
+
+\section*{Appendix A: Semi-trailer tank truck model}
+\label{appendix:A}
+Parameters in model (\ref{eq:c_time_ss_model}) are given by
+\begin{equation}
+A_{c} = 
+\begin{bmatrix}
+{T_{c}M^{- 1}A_{0}T_{c}^{-1}} & \textbf{0} \\
+A_{1} & A_{2}
+\end{bmatrix}
+X,B_{c} = 
+\begin{bmatrix}
+{T_{c}M^{- 1}B_{0}} \\ \textbf{0}
+\end{bmatrix}\nonumber
+\end{equation}
+\vspace{-0.3cm}
+\begin{equation}
+T_{c} = diag\left( \begin{bmatrix}
+v_{1x} & 1 & 1 & 1 & v_{2x} & 1 & 1 & 1 & 1 & 1
+\end{bmatrix} \right)\nonumber
+\end{equation}
+
+\vspace{-0.7cm}
+
+\begin{equation}
+\setlength{\arraycolsep}{1.2pt}
+A_1 = \begin{bmatrix}
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+\cos(\psi_1) & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+-\sin(\psi_1) & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\\nonumber
+\end{bmatrix}
+\setlength{\arraycolsep}{1.2pt}
+A_2 = \begin{bmatrix}
+0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 \\
+0 & \sin(\psi_1) & 0 & 0 \\
+0 & \cos(\psi_1) & 0 & 0 \\\nonumber
+\end{bmatrix}
+\end{equation}
+\vspace{-0.2cm}
+\begin{equation}
+\setlength{\arraycolsep}{1.2pt}
+M = \begin{bmatrix}
+m_{11} & I_{1ZZ} & 0 & m_{14} & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+m_{21} & {- I_{1xz}} & 0 & m_{24} & 0 & 0 & 0 & 0 & 0 & 0 \\
+m_{31} & 0 & 0 & m_{34} & m_{35} & 0 & 0 & m_{38} & 0 & {m_{p}l_{p}} \\
+0 & 0 & 0 & 0 & {em_{35}} & {- I_{2zz}} & 0 & m_{48} & 0 & {em_{p}l_{p}} \\
+0 & 0 & 0 & 0 & m_{55} & {- I_{2xz}} & 0 & m_{58} & 0 & m_{510} \\
+1 & {- \frac{c}{v_{1x}}} & 0 & {- \frac{h_{1c}}{v_{1x}}} & {- 1} & {- \frac{e}{v_{2x}}} & 0 & \frac{h_{2c}}{v_{2x}} & 0 & 0 \\
+0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & \frac{v_{2x}}{l_{p}} & 0 & 0 & \frac{h_{p}}{l_{p}} & 0 & 1
+\end{bmatrix}\nonumber
+\end{equation}
+\vspace{-0.3cm}
+\begin{equation}
+\begin{aligned}
+m_{11} &= m_1 v_{1x} c, m_{14} = -m_{1s} h_1 c - I_{1xz}, \\
+m_{21} &= (m_1 h_{1c} - m_{1s} h_1) v_{1x}, \\
+m_{24} &= I_{1xx} + 2m_{1s} h_1^2 - m_{1s} h_1 h_{1c}, \\
+m_{31} &= m_1 v_{1x}, m_{34} = -m_{1s} h_1, \\
+m_{35} &= (m_p + m_0) v_{2x} + m_2 v_{2x}, \\
+m_{38} &= -m_{2s} h_2 - (m_0 h_0 + m_p h_p), \\
+m_{48} &= I_{2xz} + em_{38}, \\
+m_{55} &= (m_2 h_{2c} - m_{2s} h_2) v_{2x} + h_{2c}(m_p + m_0) v_{2x} \\
+       & - (m_0 h_0 + m_p h_p) v_{2x}, \\
+m_{58} &= I_{2xx} + 2m_{2s} h_2^2 + h_2 c m_{38} + (m_0 h_0^2 + m_p h_p^2), \\
+m_{510} &= (h_{2c} - h_p) m_p l_p.\nonumber
+\end{aligned}\nonumber
+\end{equation}
+\vspace{-0.2cm}
+\begin{equation}
+\setlength{\arraycolsep}{1.2pt}
+A_{0} = \begin{bmatrix}
+a_{11} & a_{12} & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+a_{21} & a_{22} & a_{23} & {- c_{1}} & 0 & 0 & k_{12} & 0 & 0 & 0 \\
+a_{31} & a_{32} & 0 & 0 & k_{3} & a_{36} & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & a_{45} & a_{46} & 0 & 0 & 0 & 0 \\
+0 & 0 & k_{12} & 0 & a_{55} & a_{56} & a_{57} & {- c_{2}} & a_{59} & 0 \\
+0 & {- 1} & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 0 & {- \frac{v_{2x}}{l_{p}}} & 0 & 0 & {- \frac{g}{l_{p}}} & {- c_{d}}
+\end{bmatrix}\nonumber
+\end{equation}
+\vspace{-1cm}
+
+
+\begin{align*}
+a_{11} &= (a+c) k_1 + (c-b) k_2, \\
+a_{12} &= \frac{a(a+c) k_1 - b(c-b) k_2}{v_{1x}} - m_1 v_{1x} c, \\
+a_{21} &= k_1 h_{1c} + k_2 h_{1c}, \\
+a_{22} &= \frac{(ak_1 - bk_2) h_{1c}}{v_{1x}} + (m_{1s} h_1 - m_1 h_{1c}) v_{1x}, \\
+a_{23} &= m_{1s} gh_1 - k_{r1} - k_{12}, a_{31} = k_1 + k_2, \\
+a_{32} &= \frac{ak_1 - bk_2}{v_{1x}} - m_1 v_{1x}, \\
+a_{36} &= -\frac{dk_3}{v_{2x}} - m_2 v_{2x} - (m_0 + m_p) v_{2x}, \\
+a_{45} &= (d+e) k_3, \\
+a_{46} &= -\frac{d(e+d) k_3}{v_{2x}} - m_2 v_{2x} e - e(m_0 + m_p) v_{2x}, \\
+a_{55} &= k_3 h_2 e, \\
+a_{56} &= -\frac{dk_3 h_{2c}}{v_{2x}} + (m_{2s} h_2 - m_2 h_{2c}) v_{2x} \\
+       &+ (m_0 h_0 + m_p h_p) v_{2x} - h_{2c}(m_0 + m_p) v_{2x}, \\
+a_{57} &= m_{2s} gh_2 - k_{r2} - k_{12}, a_{59} = -m_p l_p g.\nonumber
+\end{align*}
+
+
+\vspace{-0.7cm}
+
+
+\begin{equation}
+\setlength{\arraycolsep}{2pt}
+B_{0} = \begin{bmatrix}
+{- \left( {c + a} \right)k_{1}} & {- k_{1}h_{1c}} & {- k_{1}} & 0 & 0 & 0 & 0 & 0 & 0 & 0\nonumber
+\end{bmatrix}^{T}
+\end{equation}
+
+\vspace{-0.7cm}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,16 @@
+\begin{abstract}
+This study focuses on the anti-rollover control problem for autonomous semi-trailer tank trucks and proposes an anti-rollover path tracking control algorithm suitable for autonomous driving scenarios. A simplified semi-trailer tank truck model is established in the controller, modeling liquid as a single pendulum considering both lateral and roll inputs, and an anti-rollover path tracking algorithm that utilizes it is developed based on multi-constraint model predictive control (MPC). The equivalent lateral load transfer rate (LTR), liquid sloshing angle, and angular velocity are used as constraints to achieve multi-objective optimization for path tracking, sloshing suppression, and rollover prevention. A vehicle-fluid coupling co-simulation platform based on computational fluid dynamics (CFD) is built to verify the control performance under extreme scenarios of left turning, high-speed single-lane change (SLC), and short-distance double-lane change (DLC). Additionally, the similarity principle for experimental validation using a down-scale model tank truck is derived, and experiments are conducted on the model semi-trailer tank truck under the DLC scenario. Through simulation and experimental verification, the proposed anti-rollover path tracking algorithm demonstrates acceptable tracking performance while ensuring that no rollover is carried out under extreme conditions, limiting the angle of $|LTR|<0.75$ and sloshing within -20$\degree$-20$\degree$, reducing the angle of sloshing by a maximum of 42\% in the experiment. Moreover, the real-time capability of the proposed algorithm meets the requirements for practical applications with a peak time consumption of one control step less than 20 $ms$ in the controller tested. 
+\end{abstract}
+
+% \vspace{-11pt}
+
+\begin{IEEEkeywords}
+Rollover prevention, path tracking, model predictive control (MPC), computational fluid dynamics (CFD), model experiment.
+\end{IEEEkeywords}
+
+\vspace{-16pt}
+
+
+
+
+
