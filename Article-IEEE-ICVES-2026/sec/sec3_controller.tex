@@ -1,0 +1,154 @@
+\section{Adaptive Q-Band Suppression Controller}
+
+\subsection{Tractor Prediction Model and ESO}
+The online optimizer uses a low-dimensional tractor-side nonlinear prediction model and treats trailer force, liquid sloshing, tire mismatch, and parameter error as lumped residuals. For the dynamic version, the front and rear tire slip angles are
+\begin{equation}
+    \alpha_f=\delta-\frac{v_y+l_fr}{v_x},\qquad
+    \alpha_r=-\frac{v_y-l_rr}{v_x},
+\end{equation}
+\begin{equation}
+    F_{yf}=C_f\alpha_f,\qquad F_{yr}=C_r\alpha_r ,
+\end{equation}
+where $v_x$, $v_y$, $r$, and $\delta$ are longitudinal speed, lateral speed, yaw rate, and front steering angle. The nominal prediction model is
+\begin{equation}
+\begin{aligned}
+    \dot v_y &= \frac{F_{yf}\cos\delta+F_{yr}}{m_{\mathrm{eq}}}-v_xr+d_y,\\
+    \dot r &= \frac{l_fF_{yf}\cos\delta-l_rF_{yr}}{I_{z,\mathrm{eq}}}+d_r ,
+\end{aligned}
+\label{eq:tractor_2dof}
+\end{equation}
+The extended-state observer estimates the slow-varying residuals. An extended state observer (ESO) is used in yaw channel:
+\begin{equation}
+\begin{aligned}
+    \dot{\hat r} &= \frac{l_f\hat F_{yf}\cos\delta-l_r\hat F_{yr}}{I_{z,\mathrm{eq}}}
+    +\hat d_r+\beta_{r1}(r-\hat r),\\
+    \dot{\hat d}_r &= \beta_{r2}(r-\hat r).
+\end{aligned}
+\label{eq:eso_full}
+\end{equation}
+The lateral distrubance mainly consist of lateral slope and could be compensated as the residual of measured lateral acceleration and centrifugal acceleration
+\begin{equation}
+    \hat d_y = a_y^{centri} - a_y^{meas} = v_x r - (a_y - \Delta a_{y,0}),
+\end{equation}
+where $\Delta a_{y,0}$ is the zero-offset of IMU and could be adjusted slowly according to constant bias of real tracking error after compensation.
+In prediction, the estimated residual could be held or exponentially decayed,
+\begin{equation}
+    \hat d_{\ell|k}=\lambda_d^\ell \hat d_k,\qquad 0<\lambda_d\leq1,
+    \label{eq:eso_decay}
+\end{equation}
+so that recent unmodeled trailer and liquid effects improve short-horizon tracking without forcing the optimizer to identify liquid states.
+
+\subsection{Hitch-Angle and Equivalent Inertia}
+\label{equivalent_inertia_hitch_angle}
+The equivalent parameters in \eqref{eq:tractor_2dof} require a tractor-trailer articulation prior. Let the tractor and trailer headings be $\psi_1$ and $\psi_2$, and define the hitch angle as
+\begin{equation}
+    \gamma=\psi_1-\psi_2 .
+\end{equation}
+With the tractor yaw rate measured as $r_m$, the trailer heading and hitch angle are estimated by
+\begin{equation}
+\begin{aligned}
+    \dot{\hat\psi}_2 &=
+    K_v\frac{v_x}{L_2}\left(\frac{L_h}{L_1}\tan\delta\cos\hat\gamma+\sin\hat\gamma\right),\\
+    \dot{\hat\gamma} &= r_m-\dot{\hat\psi}_2 .
+\end{aligned}
+\label{eq:hitch_estimator}
+\end{equation}
+Here $L_1$ is the tractor wheelbase, $L_2$ is the distance from the hitch to the trailer axle group, and $L_h$ is the distance from tractor rear axle to hitch. The correction
+\begin{equation}
+    K_v=1-\frac{m_2v_x^2e}{L_1L_2k_3}
+    \label{eq:hitch_ckds}
+\end{equation}
+keeps a first-order effect of trailer-axle sideslip; $K_v=1$ is used when the trailer tire parameters are unavailable.
+
+The trailer contribution is then projected into tractor lateral inertia and yaw inertia:
+\begin{equation}
+    m_{x,\mathrm{eq}}(\hat\gamma)=m_1+m_2\cos^2\hat\gamma,\qquad
+    m_{y,\mathrm{eq}}(\hat\gamma)=m_1+m_2\sin^2\hat\gamma,
+    \label{eq:eq_mass}
+\end{equation}
+\begin{equation}
+    I_{z,\mathrm{eq}}(\hat\gamma)=I_{z1}
+    +I_{z2}\left(\frac{d_1}{d_2}\right)^2\cos^2\hat\gamma
+    +m_2d_1^2\sin^2\hat\gamma .
+    \label{eq:eq_inertia}
+\end{equation}
+In the NMPC model, $m_{\mathrm{eq}}=m_{y,\mathrm{eq}}(\hat\gamma)$, and $I_{z,\mathrm{eq}}$ is evaluated from \eqref{eq:eq_inertia}, after low-pass filtering and saturation. When $\hat\gamma\approx0$, the trailer mainly follows the tractor longitudinally and contributes less instantaneous lateral inertia; as the articulation grows, more trailer inertia is projected into the tractor lateral/yaw response. This is a scheduling prior rather than a full articulated-vehicle model, and the remaining fast coupling is handled by the ESO and Q-band safety margins.
+
+\subsection{Band-Energy Projection}
+Let the prediction horizon contain $N$ samples and sampling time $\Delta t$. The predicted lateral-acceleration sequence is
+\begin{equation}
+    \mathbf{A}_y=[a_{y,0},a_{y,1},\ldots,a_{y,N-1}]^\T .
+\end{equation}
+For a critical band $\mathcal{B}_i$, choose discrete frequencies $f_{ij}$ and time grid $t_k=k\Delta t$. Define
+\begin{equation}
+    \mathbf{c}_{ij}=[\cos(2\pi f_{ij}t_0),\ldots,\cos(2\pi f_{ij}t_{N-1})]^\T ,
+\end{equation}
+\begin{equation}
+    \mathbf{s}_{ij}=[\sin(2\pi f_{ij}t_0),\ldots,\sin(2\pi f_{ij}t_{N-1})]^\T .
+\end{equation}
+The band energy is
+\begin{equation}
+    E_i(\mathbf{A}_y)=\mathbf{A}_y^\T\mathbf{Q}_i\mathbf{A}_y,
+\end{equation}
+\begin{equation}
+    \mathbf{Q}_i=\frac{1}{N^2}\sum_j(\mathbf{c}_{ij}\mathbf{c}_{ij}^\T+\mathbf{s}_{ij}\mathbf{s}_{ij}^\T)\succeq0 .
+\end{equation}
+The matrix $\mathbf{Q}_i$ can be precomputed for fixed $\Delta t$, $N$, and $\mathcal{B}_i$. Hence the Q-band term adds no new vehicle state; it only reshapes the predicted lateral acceleration.
+
+\subsection{Optimization Problem}
+The Q-band ART objective combines tracking, actuator regularization, acceleration smoothing, and band suppression:
+\begin{equation}
+\begin{aligned}
+\min_{\mathbf{U},\mathbf{S}}~&
+J_{\mathrm{trk}}+J_u+J_{\Delta u}
++w_a\|\mathbf{A}_y\|_2^2+w_1\|\mathbf{D}_1\mathbf{A}_y\|_2^2\\
+&+w_2\|\mathbf{D}_2\mathbf{A}_y\|_2^2
++\sum_i w_i(t)\mathbf{A}_y^\T\mathbf{Q}_i\mathbf{A}_y
++\sum_i\rho_i s_i^2 .
+\end{aligned}
+\label{eq:qband_cost}
+\end{equation}
+where $\mathbf{D}_1$ and $\mathbf{D}_2$ are first- and second-order difference matrices,  $J_{\mathrm{trk}}$ is the point-wise euclidean tracking error and yaw error
+\begin{equation}
+    J_{\mathrm{trk}}=w_{xy}(\|\mathbf{X}-\mathbf{X}_{\mathrm{ref}}\|_2^2 + \|\mathbf{Y}-\mathbf{Y}_{\mathrm{ref}}\|_2^2) + w_{\psi}(\|\mathbf{\psi}-\mathbf{\psi}_{\mathrm{ref}}\|_2^2) .
+\end{equation}
+The constraints are
+\begin{equation}
+\begin{aligned}
+    \mathbf{x}_{k+1}&=f(\mathbf{x}_k,u_k,\hat d_{k|k},m_{\mathrm{eq}},I_{z,\mathrm{eq}}),\\
+    |a_{y,k}|&\leq a_{y,\max}^{\mathrm{dyn}},\\
+    u_{\min}&\leq u_k\leq u_{\max},\quad |\Delta u_k|\leq \Delta u_{\max},\\
+    E_i(\mathbf{A}_y)&\leq \bar{E}_i+s_i,\quad s_i\geq0 .
+\end{aligned}
+\label{eq:qband_constraints}
+\end{equation}
+The soft band constraint prevents the optimizer from concentrating energy in a dangerous band, while preserving feasibility when the reference path is aggressive. In low-risk segments, $w_i(t)$ remains small and the controller behaves like a normal tracker.
+
+\subsection{Preview-Adaptive Scheduling}
+Pure feedback scheduling raises the safety weight only after the roll-slosh response has already been excited. Q-band ART uses preview risk as the main trigger. A reference lateral-acceleration sequence $\mathbf{A}_{y,\mathrm{ref}}$ is computed from the future path, and its band energy is compared with the calibrated threshold:
+\begin{equation}
+    R_i^{\mathrm{pre}}=\max\left(0,\frac{\mathbf{A}_{y,\mathrm{ref}}^\T\mathbf{Q}_i\mathbf{A}_{y,\mathrm{ref}}}{\bar{E}_{i,\mathrm{ref}}}-1\right).
+\end{equation}
+The raw weight is scheduled as
+\begin{equation}
+    w_i^{\mathrm{raw}}=w_i^{\min}+
+    \left(1-e^{-\kappa R_i^{\mathrm{pre}}}\right)(w_i^{\mathrm{tar}}-w_i^{\min}).
+\end{equation}
+Observed yaw, acceleration, or roll residuals can further increase the weight when residual sloshing remains. A non-symmetric filter is then applied:
+\begin{equation}
+    w_i(t)=(1-\alpha_i)w_i(t-\Delta t)+\alpha_i w_i^{\mathrm{raw}},
+\end{equation}
+where $\alpha_i=\alpha_\uparrow$ if $w_i^{\mathrm{raw}}>w_i(t-\Delta t)$ and $\alpha_i=\alpha_\downarrow$ otherwise. With $\alpha_\uparrow>\alpha_\downarrow$, the weight rises before a high-risk lane change and decays slowly after it.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{fig/fig1.png}
+\caption{Adaptive Q-band scheduling. Preview risk increases band weights before aggressive steering, while residual monitoring delays weight release after the maneuver.}
+\label{fig:qband_scheduler}
+\end{figure}
+% TODO（作者）：将 fig1.png 替换为自适应权重流程图。建议用少量模块画出 reference preview、band energy、ESO residual / yaw residual、asymmetric smoothing、scheduled weights 和 NMPC。
+
+\subsection{Implementation Notes}
+The Q-band module is model-agnostic. For a kinematic predictor, $a_{y,k}$ can be approximated from curvature or steering; for a dynamic predictor, it can be computed from $\dot v_y+v_xr$; for TruckSim or model-truck validation, it is evaluated from the predicted tracking response. In all cases, the controller suppresses the lateral excitation sequence rather than explicitly controlling the liquid state.
+
+% TODO（作者）：后续补充最终控制频率、预测步长、求解器、平均/峰值求解时间、低速 PP 与高速 NMPC 的切换阈值。若篇幅紧张，可放入一行 implementation paragraph。
