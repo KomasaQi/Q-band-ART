@@ -4,7 +4,7 @@
 
 
 \subsection{Tractor Prediction Model and ESO}
-The online optimizer uses a low-dimensional tractor-side nonlinear prediction model. Trailer force, liquid sloshing, tire mismatch, road slope, and parameter errors are not introduced as explicit states; instead, they are collected by residual terms. Let $v_x$, $v_y$, $r$, and $\delta$ denote tractor longitudinal speed, lateral speed, yaw rate, and front-wheel steering angle. With front and rear cornering stiffnesses $C_f$ and $C_r$, the tire slip angles and lateral forces are computed as
+The online optimizer uses a low-dimensional tractor-side nonlinear prediction model. Trailer force, liquid sloshing, tire mismatch, road slope, and parameter errors are not explicit states; they are collected as residual terms. Let $v_x$, $v_y$, $r$, and $\delta$ denote tractor longitudinal speed, lateral speed, yaw rate, and front-wheel steering angle. With front and rear cornering stiffnesses $C_f$ and $C_r$, the tire slip angles and lateral forces are
 \begin{equation}
     \alpha_f=\delta-\frac{v_y+l_fr}{v_x},\qquad
     \alpha_r=-\frac{v_y-l_rr}{v_x},
@@ -50,7 +50,7 @@ where $\ell$ is the prediction step and $\lambda_d$ is the residual forgetting f
 
 \subsection{Hitch-Angle and Equivalent Inertia}
 \label{equivalent_inertia_hitch_angle}
-The equivalent parameters in \eqref{eq:tractor_2dof} require a tractor-trailer articulation prior. Let the tractor and trailer headings be $\psi_1$ and $\psi_2$, and define the hitch angle as
+The equivalent parameters in \eqref{eq:tractor_2dof} use a tractor-trailer articulation prior. Let the tractor and trailer headings be $\psi_1$ and $\psi_2$, and define the hitch angle as
 \begin{equation}
     \gamma=\psi_1-\psi_2 .
 \end{equation}
@@ -103,19 +103,19 @@ The predicted energy in the $i$th band is
 \begin{equation}
     \mathbf{Q}_i=\frac{1}{N^2}\sum_j(\mathbf{c}_{ij}\mathbf{c}_{ij}^\T+\mathbf{s}_{ij}\mathbf{s}_{ij}^\T)\succeq0 .
 \end{equation}
-The matrix $\mathbf{Q}_i$ is precomputed from $\Delta t$, $N$, and $\mathcal{B}_i$. It adds no vehicle state; it only projects the predicted input sequence $\mathbf{A}_y$ onto dangerous frequency components.
+The matrix $\mathbf{Q}_i$ is precomputed from $\Delta t$, $N$, and $\mathcal{B}_i$. It adds no vehicle state and only projects $\mathbf{A}_y$ onto dangerous frequency components.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.98\textwidth]{fig/qband_scheduler.png}
-\caption{Adaptive Q-band scheduling. Preview risk raises the default band weights before an aggressive path segment, while feedback band monitoring further increases the weights of dynamically amplified bands and delays weight release after residual sloshing is detected.}
+\caption{Adaptive Q-band scheduling. Preview risk raises the band weights before aggressive path segments, while feedback monitoring strengthens dynamically amplified bands and delays weight release after residual sloshing.}
 \label{fig:qband_scheduler}
 \end{figure*}
 
 
 
 \subsection{Optimization Problem}
-Let $\mathbf{x}_k$ be the prediction state, $u_k=\delta_{\mathrm{cmd},k}$ be the steering command, $\mathbf{U}=[u_0,\ldots,u_{N-1}]^\T$, and $\mathbf{S}=[s_1,\ldots,s_{n_b}]^\T$ be the nonnegative slack variables for $n_b$ Q-bands. The Q-band ART objective is
+Let $\mathbf{x}_k$ be the prediction state, $u_k=\delta_{\mathrm{cmd},k}$ the steering command, $\mathbf{U}=[u_0,\ldots,u_{N-1}]^\T$, and $\mathbf{S}=[s_1,\ldots,s_{n_b}]^\T$ the nonnegative slack variables for $n_b$ Q-bands. The Q-band ART objective is
 \begin{equation}
 \begin{aligned}
 \min_{\mathbf{U},\mathbf{S}}~&
@@ -157,7 +157,7 @@ The constraints are
 The bound $a_{y,\max}^{\mathrm{dyn}}$ is the speed- and risk-dependent lateral-acceleration limit, and $\bar E_i$ is the calibrated safe energy threshold of band $\mathcal{B}_i$.
 
 \subsection{Preview-Adaptive Scheduling}
-Q-band ART uses preview risk as the main trigger. The reference lateral-acceleration sequence $\mathbf{A}_{y,\mathrm{ref}}$ is computed from future path curvature as
+Q-band ART uses preview risk as the main trigger, and the complete weight-scheduling logic is summarized in Fig.~\ref{fig:qband_scheduler}. The reference lateral-acceleration sequence $\mathbf{A}_{y,\mathrm{ref}}$ is computed from future path curvature as
 \begin{equation}
     a_{y,\mathrm{ref},k}=v_{x,k}^2\kappa_{\mathrm{ref},k},
     \qquad
@@ -179,7 +179,7 @@ where $\kappa_{\mathrm{pre}}>0$ controls how quickly the weight rises before an 
 
 
 \subsection{Feedback Band Monitoring and Residual Sloshing Memory}
-Preview alone cannot identify a frequency that becomes dangerous because of current loading, liquid fill level, tire state, or unmodeled trailer dynamics. Therefore, a feedback monitor is added to identify bands in which the input exists and the measured output is significantly amplified. Over a sliding window of $M$ samples, define the input vector
+Preview alone cannot identify bands that become dangerous due to loading, fill level, tire state, or unmodeled trailer dynamics. A feedback monitor is therefore added to detect bands with non-negligible input and amplified measured output. Over a sliding window of $M$ samples, define
 \begin{equation}
     \mathbf{a}_M(t)=[a_y^{\mathrm{mon}}(t-M+1),\ldots,a_y^{\mathrm{mon}}(t)]^\T ,
 \end{equation}
@@ -191,7 +191,7 @@ with the output window
 \begin{equation}
     \mathbf{y}_M(t)=[y^{\mathrm{mon}}(t-M+1),\ldots,y^{\mathrm{mon}}(t)]^\T .
 \end{equation}
-The yaw residual and acceleration residual are available from tractor-side sensing, and roll rate $\dot\phi$ is used when a roll sensor exists on the validation platform. For a candidate monitoring band $\mathcal{C}_j$, construct $\mathbf{Q}_j^{M}$ in the same way as $\mathbf{Q}_i$ but using window length $M$. The input and output band energies are
+The yaw and acceleration residuals are available from tractor-side sensing, and roll rate $\dot\phi$ is used when a roll sensor is available. For a monitoring band $\mathcal{C}_j$, construct $\mathbf{Q}_j^{M}$ as $\mathbf{Q}_i$ but with window length $M$. The input and output band energies are
 \begin{equation}
     E_{a,j}^{\mathrm{fb}}=\mathbf{a}_M^\T\mathbf{Q}_j^{M}\mathbf{a}_M,\qquad
     E_{y,j}^{\mathrm{fb}}=\mathbf{y}_M^\T\mathbf{Q}_j^{M}\mathbf{y}_M ,
@@ -201,16 +201,16 @@ and the observed amplification is
     G_j^{\mathrm{fb}}=\sqrt{\frac{E_{y,j}^{\mathrm{fb}}}{E_{a,j}^{\mathrm{fb}}+\epsilon}},
     \label{eq:feedback_gain}
 \end{equation}
-where $\epsilon$ avoids division by zero. A dynamically identified dangerous band must satisfy both non-negligible input and amplified output, which is encoded by
+where $\epsilon$ avoids division by zero. A dynamically dangerous band must satisfy both non-negligible input and amplified output:
 \begin{equation}
     R_j^{\mathrm{fb}}=
     \left[\frac{E_{a,j}^{\mathrm{fb}}}{\bar E_{a,j}}-1\right]_+
     \left[\frac{G_j^{\mathrm{fb}}}{\bar G_{j}^{\mathrm{fb}}}-1\right]_+ .
     \label{eq:feedback_risk}
 \end{equation}
-Here $\bar E_{a,j}$ is the minimum input-energy threshold for declaring that the band is excited, and $\bar G_j^{\mathrm{fb}}$ is the nominal amplification level obtained from calibration or low-risk data.
+Here $\bar E_{a,j}$ is the minimum input-energy threshold, and $\bar G_j^{\mathrm{fb}}$ is the nominal amplification level from calibration or low-risk data.
 
-To remember residual sloshing after the steering input has decreased, the feedback risk is stored as
+To retain residual sloshing after steering input decreases, the feedback risk is stored as
 \begin{equation}
     \mu_j(t)=\max\{\lambda_m\mu_j(t-\Delta t),~R_j^{\mathrm{fb}}(t)\},\qquad 0<\lambda_m<1 ,
 \end{equation}
@@ -219,7 +219,7 @@ where $\lambda_m$ is the memory decay factor. If the monitoring bands $\mathcal{
     \mu_i^{\mathrm{dyn}}(t)=\max_j \sigma_{ij}\mu_j(t),\qquad
     \sigma_{ij}=\frac{|\mathcal{B}_i\cap\mathcal{C}_j|}{|\mathcal{B}_i|}.
 \end{equation}
-Thus, bands that are observed to be both excited and amplified act as dynamically identified dangerous bands and increase the default Q-band weights.
+Thus, bands observed to be both excited and amplified increase the default Q-band weights.
 
 The preview and feedback activations are fused before filtering:
 \begin{equation}
@@ -240,5 +240,5 @@ Here $\kappa_{\mathrm{fb}}$ and $\eta_{\mathrm{fb}}$ tune the feedback contribut
 \end{equation}
 where $\alpha_i=\alpha_\uparrow$ when $w_i^{\mathrm{raw}}>w_i(t-\Delta t)$ and $\alpha_i=\alpha_\downarrow$ otherwise, with $\alpha_\uparrow>\alpha_\downarrow$. This makes the weight rise quickly when preview or feedback detects risk, and decay slowly while residual sloshing memory remains.
 
-\subsection{Implementation Notes}
-The Q-band module is model-agnostic. For a kinematic predictor, $a_{y,k}$ can be approximated from curvature or steering; for a dynamic predictor, it can be computed from $\dot v_y+v_xr$; for TruckSim or model-truck validation, it is evaluated from the predicted tracking response. In all cases, the controller suppresses the lateral excitation sequence rather than explicitly controlling the liquid state.
+% \subsection{Implementation Notes}
+% The Q-band module is model-agnostic. For a kinematic predictor, $a_{y,k}$ can be approximated from curvature or steering; for a dynamic predictor, it can be computed from $\dot v_y+v_xr$; for high-fidelity TruckSim validation, it is evaluated from the predicted tracking response. In all cases, the controller suppresses the lateral excitation sequence rather than explicitly controlling the liquid state.

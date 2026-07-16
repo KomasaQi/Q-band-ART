@@ -1,0 +1,70 @@
+\relax 
+\citation{chengshuo2023,wangyang2023,wenling_accident2022}
+\citation{biaozhun185642006,biaozhunR00052011}
+\citation{maohaijian2021fsi,huangyang2017impact,wanying2020antirolover,wangxiaorun2022lateralacc,chenyibao2016crosssection}
+\citation{jiaxinhong2022review,salem2000rollover,yangxiujian2018multimass,Komasa2023observing}
+\citation{renyuanyuan2020precisemodel,yuzhixin2018mpc,zongchangfu2014identification,niezhigen2015heavyduty}
+\citation{xiao2020rollsuspension,carlson2003rollover,xu2011rollover}
+\citation{zhaoweiqiang2018equivalent,zhaoweiqiang2019semitrailer,Reviewer2_SunWencai2022,MFAC_LiXiansheng2021,zhao2019hinfty,KomasaQi2025AntiRollover_TITS}
+\citation{gongjianwei2020mpcbook}
+\citation{shengbo2015fastmpc}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\citation{Komasa2023observing}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Architecture of Q-band ART. Offline calibration identifies the critical bands, energy thresholds, Q-band matrices, and conservative margins. The online controller then combines tractor-side prediction, ESO residual compensation, hitch-angle-based equivalent-parameter scheduling, Q-band projection, and NMPC to output steering commands using tractor-side sensing and precomputed Q-band parameters.}}{2}{}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:intro_architecture}{{1}{2}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Q-Band Suppression Theory}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Reduced Roll-Sloshing Excitation Model}{2}{}\protected@file@percent }
+\newlabel{eq:reduced_roll_slosh}{{1}{2}{}{equation.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Reduced lateral model. The online controller only needs the frequency response between input and output.}}{2}{}\protected@file@percent }
+\newlabel{fig:simplified_model}{{2}{2}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Critical Band and Risk Bound}{2}{}\protected@file@percent }
+\newlabel{eq:freq_response}{{4}{2}{}{equation.4}{}}
+\newlabel{eq:qband_parseval}{{6}{3}{}{equation.6}{}}
+\newlabel{eq:qband_sufficient_bound}{{7}{3}{}{equation.7}{}}
+\newlabel{eq:ltr_margin_condition}{{8}{3}{}{equation.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Adaptive Q-Band Suppression Controller}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Tractor Prediction Model and ESO}{3}{}\protected@file@percent }
+\newlabel{eq:tractor_2dof}{{11}{3}{}{equation.11}{}}
+\newlabel{eq:ay_prediction}{{12}{3}{}{equation.12}{}}
+\newlabel{eq:eso_full}{{13}{3}{}{equation.13}{}}
+\newlabel{eq:lateral_residual}{{14}{3}{}{equation.14}{}}
+\newlabel{eq:eso_decay}{{15}{3}{}{equation.15}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Hitch-Angle and Equivalent Inertia}{3}{}\protected@file@percent }
+\newlabel{equivalent_inertia_hitch_angle}{{\mbox  {III-B}}{3}{}{subsection.3.2}{}}
+\newlabel{eq:hitch_estimator}{{17}{3}{}{equation.17}{}}
+\newlabel{eq:hitch_ckds}{{18}{3}{}{equation.18}{}}
+\newlabel{eq:eq_mass}{{19}{3}{}{equation.19}{}}
+\newlabel{eq:eq_inertia}{{20}{3}{}{equation.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Adaptive Q-band scheduling. Preview risk raises the band weights before aggressive path segments, while feedback monitoring strengthens dynamically amplified bands and delays weight release after residual sloshing.}}{4}{}\protected@file@percent }
+\newlabel{fig:qband_scheduler}{{3}{4}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Band-Energy Projection}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Optimization Problem}{4}{}\protected@file@percent }
+\newlabel{eq:qband_cost}{{26}{4}{}{equation.26}{}}
+\newlabel{eq:qband_constraints}{{30}{4}{}{equation.30}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-E}}Preview-Adaptive Scheduling}{4}{}\protected@file@percent }
+\newlabel{eq:preview_risk}{{32}{4}{}{equation.32}{}}
+\citation{KomasaQi2025AntiRollover_TITS}
+\citation{KomasaQi2025AntiRollover_TITS}
+\citation{KomasaQi2025AntiRollover_TITS}
+\citation{KomasaQi2025AntiRollover_TITS}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-F}}Feedback Band Monitoring and Residual Sloshing Memory}{5}{}\protected@file@percent }
+\newlabel{eq:feedback_gain}{{38}{5}{}{equation.38}{}}
+\newlabel{eq:feedback_risk}{{39}{5}{}{equation.39}{}}
+\newlabel{eq:raw_weight_combined}{{44}{5}{}{equation.44}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Validation}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Co-Simulation Setup}{5}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Continuous five-pins maneuver: speed ramps from 60 km/h to 100 km/h, and the five DLC distances are 100, 81.25, 62.5, 43.75, and 25 m.}}{5}{}\protected@file@percent }
+\newlabel{fig:fivepin_condition}{{4}{5}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Continuous Five-Pins Results}{5}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Continuous five-pins comparison: (a) trajectory tracking, (b) lateral load transfer ratio, (c) longitudinal speed, and (d) front steering angle. PT denotes the TruckSim preview tracking baseline, Full-ART denotes the full-state active rollover tracking controller in \cite  {KomasaQi2025AntiRollover_TITS}, and Q-band ART denotes the proposed controller.}}{6}{}\protected@file@percent }
+\newlabel{fig:pin5_sim_results}{{5}{6}{}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Q-Band Ablation Study}{6}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Ablation study of the Q-band mechanism in five independent DLC segments: (a) RMS tracking error and (b) peak estimated LTR. Red crosses at the dashed $|\ensuremath  {\mathrm  {LTR}}_{\mathrm  {est}}|=1$ line indicate simulations in which rollover occurred, not numerical clipping.}}{7}{}\protected@file@percent }
+\newlabel{fig:ablation}{{6}{7}{}{figure.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Ablation metrics}}{7}{}\protected@file@percent }
+\newlabel{tab:ablation_metrics}{{I}{7}{}{table.1}{}}
+\bibstyle{IEEEtran}
+\bibdata{main}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{8}{}\protected@file@percent }
+\gdef \@abspage@last{8}
